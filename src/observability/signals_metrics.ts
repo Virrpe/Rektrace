@@ -11,6 +11,17 @@ let wsSkipped = 0;
 let wsTicks = 0;
 let wsConnected = 0; // gauge
 
+// Posting-budget metrics
+let postAllowed = 0;
+let postDenied = 0;
+let postDeniedCooldown = 0;
+let postDeniedHourCap = 0;
+let postDeniedDayCap = 0;
+let postDeniedClamp = 0;
+let postSampledDrop = 0;
+let postHourUsed = 0;
+let postDayUsed = 0;
+
 const computeLat: number[] = [];
 const wsComputeLat: number[] = [];
 
@@ -55,7 +66,32 @@ export function snapshotSignalsMetrics() {
     signals_ws_connected: wsConnected,
     signals_ws_compute_ms_p50: s2.p50,
     signals_ws_compute_ms_p95: s2.p95,
+    // posting budget block
+    signals_post_allowed_total: postAllowed,
+    signals_post_denied_total: postDenied,
+    signals_post_denied_cooldown_total: postDeniedCooldown,
+    signals_post_denied_hour_cap_total: postDeniedHourCap,
+    signals_post_denied_day_cap_total: postDeniedDayCap,
+    signals_post_denied_clamp_total: postDeniedClamp,
+    signals_post_sampled_drop_total: postSampledDrop,
+    signals_post_hour_used: postHourUsed,
+    signals_post_day_used: postDayUsed,
   };
+}
+
+export function notePostDecision(decision: { allow: boolean; reason: string; hour_used: number; day_used: number }) {
+  postHourUsed = Math.max(0, decision.hour_used|0);
+  postDayUsed = Math.max(0, decision.day_used|0);
+  if (decision.allow) { postAllowed++; return; }
+  postDenied++;
+  switch (decision.reason) {
+    case 'cooldown': postDeniedCooldown++; break;
+    case 'hour_cap': postDeniedHourCap++; break;
+    case 'day_cap': postDeniedDayCap++; break;
+    case 'clamp_deny': postDeniedClamp++; break;
+    case 'clamp_sample_drop': postSampledDrop++; break;
+    default: break;
+  }
 }
 
 

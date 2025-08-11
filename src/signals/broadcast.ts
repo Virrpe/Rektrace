@@ -1,5 +1,7 @@
 import Redis from 'ioredis';
 import type { Signal } from './schemas.js';
+import { shouldPost } from './posting_budget.js';
+import { notePostDecision } from '../observability/signals_metrics.js';
 
 function getRedis(): Redis | null { const url = process.env.REDIS_URL || ''; return url ? new Redis(url) : null as any; }
 const memPosted = new Map<string, number>();
@@ -21,6 +23,14 @@ export async function maybePostSignals(api: ApiLike, chatId: number, signals: Si
       if (Date.now() - ts < 10 * 60 * 1000) posted = true;
     }
     if (posted) continue;
+    // posting budget gate (env-gated; default disabled → allow)
+    const isAdmin = false; // broadcast path is not user-initiated; admin override applies only to commands
+    const dec = await shouldPost(Date.now(), { admin: isAdmin });
+    notePostDecision(dec);
+    if (!dec.allow) {
+      try { console.log(JSON.stringify({ at: 'signals.post.denied', reason: dec.reason, hour_used: dec.hour_used, day_used: dec.day_used, wait_ms: dec.wait_ms, attestationId: s.attestationId })); } catch {}
+      continue;
+    }
     if (sender) {
       try { await sender(s); } catch {}
     } else {

@@ -12,6 +12,8 @@ import { maybeMask } from '../../src/security/log_mask.js';
 import { requireAdmin } from '../../src/security/admin_gate.js';
 import { computeTopSignals } from '../../src/signals/compute.js';
 import { maybePostSignals } from '../../src/signals/broadcast.js';
+import { shouldPost } from '../../src/signals/posting_budget.js';
+import { notePostDecision } from '../../src/observability/signals_metrics.js';
 
 function badge(score: number) { return score>=80?'🟢':score>=60?'🟡':'🔴'; }
 function fmtFlags(flags: string[]) { return flags.slice(0,5).map(f=>`• ${escapeMD(f)}`).join('\n'); }
@@ -39,6 +41,12 @@ export function registerRugScan(bot: Bot) {
       const sigs = await computeTopSignals(5);
       const first = sigs[0]?.attestationId || '';
       await maybePostSignals({ sendMessage: (chatId, text, opts) => ctx.api.sendMessage(chatId, text, opts) }, ctx.chat!.id, sigs, async (s) => {
+        const dec = await shouldPost(Date.now(), { admin: true });
+        notePostDecision(dec);
+        if (!dec.allow) {
+          try { console.log(JSON.stringify({ at: 'signals.post.denied', cmd: '/signals_now', reason: dec.reason, hour_used: dec.hour_used, day_used: dec.day_used, wait_ms: dec.wait_ms, attestationId: s.attestationId })); } catch {}
+          return;
+        }
         const scanCb = await putCb(`full|${s.pair.chain}|${s.pair.address}`);
         const watchCb = await putCb(`alert|${s.pair.chain}|${s.pair.address}`);
         const shareCb = await putCb(`share|${s.pair.chain}|${s.pair.address}`);

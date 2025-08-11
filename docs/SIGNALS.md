@@ -49,6 +49,47 @@ HMAC_API_ENFORCE=false
 HMAC_API_SECRET=
 ```
 
+### Posting Budget (env-gated; default OFF)
+
+Operate a Telegram posting budget to limit hourly/daily posts and enforce a short cooldown between posts. Budget affects broadcast only; compute and status remain unchanged.
+
+Env (defaults shown; do not enable by default):
+
+```
+SIGNALS_POST_BUDGET_ENABLED=false
+SIGNALS_POST_MAX_PER_HOUR=6
+SIGNALS_POST_MAX_PER_DAY=50
+SIGNALS_POST_COOLDOWN_MS=20000
+SIGNALS_POST_WHEN_CLAMP=sample   # one of: deny|sample|allow
+SIGNALS_POST_SAMPLE_PCT=30       # used when CLAMP + 'sample'
+SIGNALS_POST_ADMIN_OVERRIDE=false
+```
+
+Behavior:
+- When enabled, each Telegram post is gated by hour/day counters and cooldown.
+- Clamp-aware: if auto-guard/budget-guard clamps the system, policy can either `deny`, probabilistically `sample`, or `allow` as usual.
+- Admin override: when `SIGNALS_POST_ADMIN_OVERRIDE=true`, `/signals_now` bypasses the budget.
+- Redis is used if `REDIS_URL` is set; otherwise, an in-memory fallback is used.
+
+Metrics added to `/metrics`:
+```
+signals_post_allowed_total
+signals_post_denied_total
+signals_post_denied_cooldown_total
+signals_post_denied_hour_cap_total
+signals_post_denied_day_cap_total
+signals_post_denied_clamp_total
+signals_post_sampled_drop_total
+signals_post_hour_used
+signals_post_day_used
+```
+
+Operator smoke (local):
+```
+HEALTH_PORT=3000 pnpm run rehearse:signals
+bash scripts/signals_budget_smoke.sh
+```
+
 ## Backtest
 ```
 BASE_URL=http://127.0.0.1:${HEALTH_PORT:-3000}
