@@ -19,6 +19,6 @@ echo "Generating $ENV_FILE from $SECRETS (preset=live)"
 PRESET=live pnpm -s run env:gen | cat
 
 echo "Done. Validate with: head -n 20 $ENV_FILE"
-echo "→ Next: pm2 reload ecosystem.config.js --update-env"
+echo "→ Next: bash ops/pm2_reload.sh"
 
 

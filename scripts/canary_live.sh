@@ -33,7 +33,7 @@ if command -v jq >/dev/null 2>&1; then
   fi
 fi
 echo "[canary] SLO gate OK. Reloading cluster"
-pm2 reload ecosystem.config.js --update-env || true
+bash ops/pm2_reload.sh || true
 pm2 delete ${CANARY_NAME} || true
 echo "[canary] Done."
 

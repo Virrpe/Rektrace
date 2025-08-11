@@ -11,19 +11,19 @@ These controls provide fast, safe ways to pause or limit behavior without changi
 ## Usage
 - Freeze all non-essential traffic:
   ```sh
-  MAINTENANCE_MODE=true pm2 reload ecosystem.config.js --update-env
+  MAINTENANCE_MODE=true bash ops/pm2_reload.sh
   ```
 - Force breaker open to stop external spend while keeping contracts:
   ```sh
-  BREAKER_FORCE_OPEN=true pm2 reload ecosystem.config.js --update-env
+  BREAKER_FORCE_OPEN=true bash ops/pm2_reload.sh
   ```
 - Enable read-only guard (HTTP only):
   ```sh
-  READONLY_MODE=true pm2 reload ecosystem.config.js --update-env
+  READONLY_MODE=true bash ops/pm2_reload.sh
   ```
 - Add extra runtime redaction:
   ```sh
-  LOG_REDACT_LIST=secret123,apikey_abc pm2 reload ecosystem.config.js --update-env
+  LOG_REDACT_LIST=secret123,apikey_abc bash ops/pm2_reload.sh
   ```
 
 ## Endpoints

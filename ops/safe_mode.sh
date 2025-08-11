@@ -5,7 +5,7 @@ ENV_FILE=".env.prod"
 ts=$(date +%Y%m%d_%H%M%S)
 bak="${ENV_FILE}.bak.${ts}"
 
-if [[ ! -f "$ENV_FILE" ]];nthen
+if [[ ! -f "$ENV_FILE" ]]; then
   echo "${ENV_FILE} not found. Generate it first (e.g., PRESET=live pnpm run env:gen)." >&2
   exit 1
 fi

@@ -39,9 +39,9 @@
 
 ### Freeze & Recover
 - Freeze Now:
-  - `MAINTENANCE_MODE=true pm2 reload ecosystem.config.js --update-env`
-  - optionally `BREAKER_FORCE_OPEN=true pm2 reload ecosystem.config.js --update-env`
-  - optionally `READONLY_MODE=true pm2 reload ecosystem.config.js --update-env`
+  - `MAINTENANCE_MODE=true bash ops/pm2_reload.sh`
+  - optionally `BREAKER_FORCE_OPEN=true bash ops/pm2_reload.sh`
+  - optionally `READONLY_MODE=true bash ops/pm2_reload.sh`
 - Verify:
   - `pnpm run synthetic:probe`
   - `pnpm run config:snapshot`

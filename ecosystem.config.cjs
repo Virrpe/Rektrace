@@ -1,4 +1,3 @@
-// CommonJS export for PM2 ecosystem; Node may run in ESM mode in this repo
 module.exports = {
   apps: [
     {

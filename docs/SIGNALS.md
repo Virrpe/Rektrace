@@ -179,7 +179,7 @@ pnpm run signoff
 
 # enable signals only (broadcast remains off)
 # edit .env.prod: set SIGNALS_ENABLED=true; keep SIGNALS_BROADCAST_ENABLED=false
-pm2 reload ecosystem.config.js --update-env
+bash ops/pm2_reload.sh
 
 # manual admin test in TG: /signals_now
 ```

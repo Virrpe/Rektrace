@@ -7,7 +7,7 @@ pnpm run verify
 echo "[rehearsal] 2) Docker rehearsal (compose up)"
 docker compose -f docker-compose.example.yml up -d --build
 
-BASE=${BASE_URL:-http://127.0.0.1:${PORT:-8080}}
+BASE=${BASE_URL:-http://127.0.0.1:${HEALTH_PORT:-3000}}
 echo "[rehearsal] Waiting for /ready"
 for i in {1..20}; do
   if curl -fsS "${BASE}/ready" >/dev/null 2>&1; then break; fi

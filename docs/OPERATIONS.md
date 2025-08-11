@@ -5,11 +5,11 @@ When to freeze:
 
 Steps:
 1) Set maintenance to abort traffic quickly while keeping status endpoints:
-   - `MAINTENANCE_MODE=true pm2 reload ecosystem.config.js --update-env`
+   - `MAINTENANCE_MODE=true bash ops/pm2_reload.sh`
 2) If spend needs to halt immediately but scans must remain contract-compatible:
-   - `BREAKER_FORCE_OPEN=true pm2 reload ecosystem.config.js --update-env`
+   - `BREAKER_FORCE_OPEN=true bash ops/pm2_reload.sh`
 3) If write paths exist in HTTP, keep them off:
-   - `READONLY_MODE=true pm2 reload ecosystem.config.js --update-env`
+   - `READONLY_MODE=true bash ops/pm2_reload.sh`
 4) Verify with probes:
    - `pnpm run synthetic:probe` (non-zero exit on SLO breach)
    - `pnpm run config:snapshot` (check for DRIFT)

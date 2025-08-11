@@ -20,7 +20,7 @@ echo "[deploy] Building..."
 pnpm build
 pnpm rugscan:build || true # ensure subproject build
 
-echo "[deploy] Starting pm2 via ecosystem.config.js..."
+echo "[deploy] Starting pm2 via ecosystem (CJS preferred)..."
 export DOTENV_CONFIG_PATH=.env.prod
 # Export .env.prod into environment so Node sees vars (project loads dotenv for .env by default)
 if [ -f .env.prod ]; then
@@ -30,8 +30,7 @@ if [ -f .env.prod ]; then
   set +a
 fi
 if command -v pm2 >/dev/null 2>&1; then
-  pm2 start ecosystem.config.js --update-env || pm2 restart ecosystem.config.js --update-env
-  pm2 save || true
+  bash ops/pm2_start.sh
 else
   echo "pm2 not installed; starting foreground process (CTRL+C to stop)" >&2
   node dist/rektrace-rugscan/rektrace-rugscan/src/index.js

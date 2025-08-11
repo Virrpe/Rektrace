@@ -45,6 +45,10 @@ importers:
       vitest:
         specifier: ^1.6.0
         version: 1.6.1(@types/node@24.2.1)
+    optionalDependencies:
+      ws:
+        specifier: ^8.17.0
+        version: 8.18.3
 
 packages:
 

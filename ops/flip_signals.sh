@@ -60,6 +60,6 @@ esac
 
 echo "Backup: ${ENV_FILE}.bak.${TS}"
 echo "Edited: $ENV_FILE"
-echo "→ reload: pm2 reload ecosystem.config.js --update-env"
+echo "→ reload: bash ops/pm2_reload.sh"
 
 

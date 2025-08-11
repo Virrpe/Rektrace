@@ -26,7 +26,7 @@ if [[ -z "$bundle_dir" ]]; then
 fi
 
 echo "[rollback] Starting from bundle using existing .env.prod"
-HEALTH_PORT=${HEALTH_PORT:-3000} pm2 start ecosystem.config.js --name rektrace --update-env || true
+HEALTH_PORT=${HEALTH_PORT:-3000} bash ops/pm2_start.sh || true
 pm2 save
 
 echo "[rollback] Rolled back to $(basename "$last") at $(date -Iseconds)"

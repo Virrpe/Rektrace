@@ -226,7 +226,7 @@ PRESET=live pnpm run env:gen
 bash ops/safe_mode.sh
 pnpm run signoff
 # enable signals in .env.prod (manually set SIGNALS_ENABLED=true, optional broadcast/channel id)
-pm2 reload ecosystem.config.js --update-env
+bash ops/pm2_reload.sh
 ```
 
 ### Orchestrated live deploy (rugscan)
@@ -252,7 +252,8 @@ Notes:
 ### Rollback
 
 ```bash
-pm2 delete rektrace && pm2 start ecosystem.config.js --update-env && pm2 save
+pm2 delete rektrace || true
+bash ops/pm2_start.sh
 ```
 
 ### Logrotate (PM2)
@@ -295,7 +296,7 @@ PRESET=live pnpm run env:gen
 
 
 ## Health server
-- Starts on `HEALTH_PORT` (default 3000)
+- Starts on `HEALTH_PORT` (demo default 3000; live default 8081)
 - `GET /healthz` → `ok`
 - `GET /metrics` → JSON with uptime & memory
  - `GET /live` → 200 once booted
@@ -327,7 +328,7 @@ pnpm run signoff
 
 # enable signals only (broadcast stays OFF)
 # edit .env.prod: set SIGNALS_ENABLED=true; keep SIGNALS_BROADCAST_ENABLED=false
-pm2 reload ecosystem.config.js --update-env
+bash ops/pm2_reload.sh
 
 # manual admin verify in Telegram:
 /signals_now
