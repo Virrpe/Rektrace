@@ -1,0 +1,26 @@
+{
+  "status": "ok",
+  "query": "ink:pepe",
+  "items": [
+    {
+      "chain": "ethereum",
+      "address": "0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef",
+      "holders": 12345,
+      "flags": ["LP locked 90d","Tax 3/3%","No honeypot"],
+      "score": 78,
+      "sources": ["demo"],
+      "confidence": "high"
+    },
+    {
+      "chain": "solana",
+      "address": "So11111111111111111111111111111111111111112",
+      "holders": 6543,
+      "flags": ["Top1 holder 22%","Not flagged by RugCheck"],
+      "score": 72,
+      "sources": ["demo"],
+      "confidence": "high"
+    }
+  ],
+  "consensus": {"score": 75, "decision": "approved", "notes": ["demo: auto-consensus"]}
+}
+

@@ -1,0 +1,73 @@
+{
+  "name": "rektrace",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20 <21", "pnpm": ">=9" },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "rugscan:dev": "tsx watch rektrace-rugscan/src/index.ts",
+    "dev:demo": "DOTENV_CONFIG_PATH=.env.demo tsx watch rektrace-rugscan/src/index.ts",
+    "dev:local": "DOTENV_CONFIG_PATH=.env.local tsx watch rektrace-rugscan/src/index.ts",
+    "build": "tsc -p .",
+    "rugscan:build": "tsc -p rektrace-rugscan/tsconfig.json",
+    "start": "node dist/index.js",
+    "start:rugscan": "node dist/rektrace-rugscan/rektrace-rugscan/src/index.js",
+    "test": "node --test --test-reporter=spec",
+    "test:all": "vitest run --reporter=verbose",
+    "docs:check": "tsx tools/check-docs.ts",
+    "docs:open": "echo 'Open docs in Cursor preview'",
+    "canary:node": "node tools/canary_node.cjs",
+    "ip:public": "node tools/get_public_ip.mjs",
+    "env:gen": "node tools/gen_env_from_ops.mjs ops/secrets.local.json .env.prod",
+    "env:gen:live": "PRESET=live node tools/gen_env_from_ops.mjs ops/secrets.local.json .env.prod",
+    "env:gen:demo": "PRESET=demo node tools/gen_env_from_ops.mjs ops/secrets.local.json .env.prod",
+    "deploy:live": "bash scripts/deploy_live.sh",
+    "smoke:live": "bash scripts/smoke_live.sh",
+    "typecheck": "tsc -p . --noEmit",
+    "preflight": "bash scripts/preflight.sh",
+    "smoke:abuse": "bash scripts/smoke_abuse.sh",
+    "oracle:scan": "bash scripts/oracle_scan.sh",
+    "fuzz:scan": "bash scripts/fuzz_scan.sh",
+    "chaos:smoke": "bash scripts/chaos_smoke.sh",
+    "soak:scan": "bash scripts/soak_scan.sh",
+    "git:hooks": "bash tools/install_hooks.sh",
+    "canary:live": "bash scripts/canary_live.sh",
+    "alerts:watch": "bash scripts/alerts_watch.sh",
+    "synthetic:probe": "bash scripts/synthetic_probe.sh",
+    "config:snapshot": "bash scripts/config_snapshot.sh",
+    "logs:scrub": "bash scripts/log_scrub.sh",
+    "env:lint": "bash scripts/env_lint.sh",
+    "release:bundle": "bash scripts/release_bundle.sh",
+    "signals:backtest": "bash scripts/signals_backtest.sh",
+    "verify": "pnpm run build && pnpm run test && pnpm run env:lint && pnpm run preflight && pnpm run oracle:scan && pnpm run fuzz:scan && pnpm run chaos:smoke && bash scripts/sbom.sh",
+    "release:checksum": "shasum -a 256 release_artifacts/*.tar.gz || sha256sum release_artifacts/*.tar.gz",
+    "release:tag": "node tools/bump_and_tag.mjs",
+    "signoff": "bash scripts/signoff.sh"
+    ,"go:live": "bash ops/go_live.sh"
+    ,"watch:post": "bash ops/watch_post_launch.sh"
+    ,"rollback:last": "bash ops/rollback_last.sh"
+    ,"perf:baseline": "bash scripts/baseline_perf.sh"
+    ,"perf:gate": "bash scripts/perf_gate.sh"
+    ,"rehearse:launch": "bash ops/rehearse_launch.sh"
+    ,"drill:freeze": "bash ops/drill_freeze.sh"
+    ,"rules:flip": "bash ops/flip_rules.sh"
+    ,"release:audit": "bash scripts/audit_pack.sh"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "grammy": "^1.25.3",
+    "ioredis": "^5.4.1",
+    "undici": "^6.19.8",
+    "@polkadot/api": "^10.12.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4",
+    "vitest": "^1.6.0",
+    "@napi-rs/canvas": "^0.1.53",
+    "supertest": "^7.0.0",
+    "@types/supertest": "^2.0.16",
+    "dotenv-cli": "^7.4.2"
+  }
+}

@@ -1,0 +1,8 @@
+Using HEALTH_PORT=3299
+Build...
+
+> rektrace@0.1.0 rugscan:build C:\buildz\rektrace
+> tsc -p rektrace-rugscan/tsconfig.json
+
+Start server...
+Warm cache (10 mixed scans on ink)

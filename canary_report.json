@@ -1,0 +1,31 @@
+{
+  "base": "http://localhost:3057",
+  "env": {
+    "START_SERVER": false,
+    "HTTP_ONLY": true,
+    "DEMO_MODE": false,
+    "CHAIN": "ink",
+    "HEALTH_PORT": 3057
+  },
+  "codes": {
+    "200": 19,
+    "429": 3
+  },
+  "warmP50": 115,
+  "warmP90": 212,
+  "burstP50": 609,
+  "burstP90": 867,
+  "httpP90": {
+    "value": 867,
+    "pass": true
+  },
+  "availability": {
+    "value": 13.64,
+    "pass": false
+  },
+  "providers": {
+    "offenders": [],
+    "pass": true
+  },
+  "startedAt": "2025-08-11T00:32:02.937Z"
+}

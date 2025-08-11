@@ -1,0 +1,18 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "outDir": "../dist/rektrace-rugscan",
+    "rootDir": "../",
+    "composite": false
+  },
+  "include": [
+    "../rektrace-rugscan/**/*",
+    "../src/**/*"
+  ],
+  "exclude": [
+    "../node_modules",
+    "../dist"
+  ]
+}
+
+

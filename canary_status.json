@@ -1,0 +1,46 @@
+{
+  "budgets": {
+    "providerTimeoutMs": 2500,
+    "providerRetry": 1,
+    "scanTtlSec": 120,
+    "lpTtlSec": 600
+  },
+  "breakers": {
+    "coingecko": {
+      "state": "ok",
+      "lastTransitionSecAgo": 33
+    },
+    "bitquery": {
+      "state": "ok",
+      "lastTransitionSecAgo": 33
+    },
+    "moralis": {
+      "state": "ok",
+      "lastTransitionSecAgo": 33
+    },
+    "helius": {
+      "state": "ok",
+      "lastTransitionSecAgo": 33
+    },
+    "solscan": {
+      "state": "ok",
+      "lastTransitionSecAgo": 33
+    },
+    "dexscreener": {
+      "state": "ok",
+      "lastTransitionSecAgo": 33
+    },
+    "covalent": {
+      "state": "ok",
+      "lastTransitionSecAgo": 33
+    },
+    "goplus": {
+      "state": "ok",
+      "lastTransitionSecAgo": 33
+    },
+    "rugcheck": {
+      "state": "ok",
+      "lastTransitionSecAgo": 33
+    }
+  }
+}

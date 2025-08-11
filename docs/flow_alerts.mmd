@@ -1,0 +1,25 @@
+sequenceDiagram
+  participant U as User
+  participant TG as Telegram Bot
+  participant SUB as Redis Subs
+  participant CHK as Alerts Checker
+  participant SC as scan()
+  participant DM as DM Sender
+
+  U->>TG: Tap "🔔 Alert me"
+  TG->>SUB: subscribe(chatId, chain:token)
+  Note right of TG: /my_alerts lists, 🔕 unsub
+  loop every ALERTS_CHECK_INTERVAL_MS (Prod only)
+    CHK->>SUB: list subscribed tokens
+    CHK->>SC: scan(chain:token) [TTL+breakers+timeouts]
+    SC-->>CHK: result {score, flags}
+    alt score drop ≥ ALERT_SCORE_DROP or LP unlock <7d
+      CHK->>DM: throttle + DM cap check
+      DM->>U: send alert DM
+      CHK->>SUB: update meta (lastScore, lpUnlock7dNotified)
+    else
+      CHK-->>CHK: no-op
+    end
+  end
+
+

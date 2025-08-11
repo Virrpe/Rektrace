@@ -1,0 +1,9 @@
+{
+  "uptimeSec": 31,
+  "rss": 144973824,
+  "heapUsed": 47841512,
+  "heapTotal": 87232512,
+  "platform": "win32",
+  "node": "v22.15.0",
+  "providers": {}
+}

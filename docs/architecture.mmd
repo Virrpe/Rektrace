@@ -1,0 +1,23 @@
+flowchart LR
+  TG["Telegram"] --> IDX["rektrace-rugscan/src/index.ts"]
+  HTTP["HTTP API"] --> IDX
+  IDX --> CMD["commands.ts"]
+  IDX --> STS["status/metrics routes"]
+  CMD --> SCAN["scan.ts"]
+  CMD --> ENR["enrich.ts"]
+  SCAN --> P1["GoPlus"]
+  SCAN --> P2["RugCheck"]
+  SCAN --> P3["Covalent"]
+  ENR --> P3
+  SCAN --> P4["DexScreener"]
+  SCAN --> CACH[("Redis + In-Mem")]
+  SCAN --> BRK[["Circuit Breakers"]]
+  ENR --> CACH
+  BRK --> STS
+  STS --> METR["metrics.ts (p50/p90/error%)"]
+  CMD --> CBMAP[("Callback Map TTL=600s")] 
+  CMD --> RL[["Global QPS"]]
+  CMD --> URL[["Shortener Denylist"]]
+  CMD --> UI[["Markdown Escaper"]]
+
+

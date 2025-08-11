@@ -1,0 +1,26 @@
+{
+  "monitors": [
+    {
+      "friendly_name": "RekTrace Live",
+      "url": "http://YOUR_HOST:8080/live",
+      "type": 1,
+      "interval": 30
+    },
+    {
+      "friendly_name": "RekTrace Ready",
+      "url": "http://YOUR_HOST:8080/ready",
+      "type": 1,
+      "interval": 30
+    },
+    {
+      "friendly_name": "RekTrace Status",
+      "url": "http://YOUR_HOST:8080/status?verbose=1",
+      "type": 1,
+      "interval": 60,
+      "keyword_type": 2,
+      "keyword_value": "slo"
+    }
+  ]
+}
+
+
