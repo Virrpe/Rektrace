@@ -4,6 +4,9 @@
   "private": true,
   "type": "module",
   "engines": { "node": ">=20 <21", "pnpm": ">=9" },
+  "optionalDependencies": {
+    "ws": "^8.17.0"
+  },
   "scripts": {
     "dev": "tsx watch src/index.ts",
     "rugscan:dev": "tsx watch rektrace-rugscan/src/index.ts",
@@ -40,6 +43,8 @@
     "env:lint": "bash scripts/env_lint.sh",
     "release:bundle": "bash scripts/release_bundle.sh",
     "signals:backtest": "bash scripts/signals_backtest.sh",
+    "rehearse:signals": "bash scripts/rehearse_signals.sh",
+    "rehearse:ws": "bash scripts/rehearse_ws.sh",
     "verify": "pnpm run build && pnpm run test && pnpm run env:lint && pnpm run preflight && pnpm run oracle:scan && pnpm run fuzz:scan && pnpm run chaos:smoke && bash scripts/sbom.sh",
     "release:checksum": "shasum -a 256 release_artifacts/*.tar.gz || sha256sum release_artifacts/*.tar.gz",
     "release:tag": "node tools/bump_and_tag.mjs",

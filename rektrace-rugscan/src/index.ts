@@ -589,12 +589,7 @@ try { startAutoGuard(); } catch {}
 // --- Bootstrap Signals (env-gated) ---
 try {
   const stopCompute = bootstrapSignalsCompute();
-  const stopPoll = startSignalsPoller(async () => {
-    // reuse existing enrich sources when available; minimal stub: no external deps added
-    return [
-      { pair: { chain: 'ink', address: '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef', symbol: 'INK/USDC' }, priceUsd: 1.0 },
-    ];
-  });
+  const stopPoll = startSignalsPoller();
   void stopCompute; void stopPoll;
 } catch {}
 try {

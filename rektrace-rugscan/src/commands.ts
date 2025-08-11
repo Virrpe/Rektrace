@@ -37,7 +37,20 @@ export function registerRugScan(bot: Bot) {
     if (!adminId || ctx.from?.id !== adminId) return ctx.reply('Unauthorized.');
     try {
       const sigs = await computeTopSignals(5);
-      await maybePostSignals({ sendMessage: (chatId, text) => ctx.api.sendMessage(chatId, text) }, ctx.chat!.id, sigs);
+      const first = sigs[0]?.attestationId || '';
+      await maybePostSignals({ sendMessage: (chatId, text, opts) => ctx.api.sendMessage(chatId, text, opts) }, ctx.chat!.id, sigs, async (s) => {
+        const scanCb = await putCb(`full|${s.pair.chain}|${s.pair.address}`);
+        const watchCb = await putCb(`alert|${s.pair.chain}|${s.pair.address}`);
+        const shareCb = await putCb(`share|${s.pair.chain}|${s.pair.address}`);
+        const body = [
+          `📡 Signal: ${escapeMD(s.pair.symbol || s.pair.address.slice(0,6)+'…')} — score ${s.score}`,
+          `vol5m=${Math.round(s.metrics.vol5m)}  price15m=${s.metrics.price15m.toFixed(2)}%  maker5m=${s.metrics.maker5m.toFixed(3)}`,
+          `attestationId=${s.attestationId}`,
+        ].join('\n');
+        const kb = new InlineKeyboard().text('🔍 Scan', scanCb).text('🔔 Watch', watchCb).text('📰 Share', shareCb);
+        await ctx.api.sendMessage(ctx.chat!.id, body, { parse_mode: 'Markdown', reply_markup: kb });
+      });
+      try { const { getOrCreateRequestId, logHttpJson } = await import('../../src/observability/request_id.js'); const rid = getOrCreateRequestId({} as any, {} as any); logHttpJson({ reqId: rid, method: 'BOT', route: '/signals_now', status: 200, ms: 0 }); } catch {}
       await ctx.reply(`Posted ${sigs.length} signals.`);
     } catch { await ctx.reply('Error.'); }
   });

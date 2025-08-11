@@ -318,3 +318,20 @@ If CoinGecko rate-limits, RekTrace now falls back to **DexScreener** search by s
 - Attestation lookup: `GET /signals/:id/attestation` → `{ id, sha256, generated_at }`.
 - Optional HMAC-gated full list: `GET /signals` when `HMAC_API_ENFORCE=true` and `HMAC_API_SECRET` set.
 - Telegram admin: `/signals_now`, `/signals_auto` when `SIGNALS_BROADCAST_ENABLED=true`.
+
+### Signals go-live (safe canary)
+```
+PRESET=live pnpm run env:gen
+bash ops/safe_mode.sh
+pnpm run signoff
+
+# enable signals only (broadcast stays OFF)
+# edit .env.prod: set SIGNALS_ENABLED=true; keep SIGNALS_BROADCAST_ENABLED=false
+pm2 reload ecosystem.config.js --update-env
+
+# manual admin verify in Telegram:
+/signals_now
+
+# later, to enable auto-broadcast (optional):
+# set SIGNALS_BROADCAST_ENABLED=true; pm2 reload ...
+```

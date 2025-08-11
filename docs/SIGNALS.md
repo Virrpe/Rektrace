@@ -54,6 +54,67 @@ HMAC_API_SECRET=
 BASE_URL=http://127.0.0.1:${HEALTH_PORT:-3000}
 HTTP_ONLY=true DEMO_MODE=true SIGNALS_ENABLED=true pnpm run signals:backtest
 ```
+
+## Discovery (poll) — Ink adapter
+- Adapter: `src/signals/adapters/ink_discovery.ts`
+- Env:
+  - `SIGNALS_SOURCE=poll` (default)
+  - `SIGNALS_POLL_MS=5000`
+  - `SIGNALS_CHAINS=ink`
+- Dedupe: in-mem Set; if `REDIS_URL` set, also uses `SADD signals:seen` with `EXPIRE 24h`.
+
+## WebSocket (QuickNode) — optional
+- Adapter: `src/signals/adapters/ws_quicknode.ts`
+- Env (all default-off):
+  - `SIGNALS_WS_ENABLED=false`
+  - `QUICKNODE_WSS_URL` (or derive from `QUICKNODE_RPC_URL` → `wss://...`)
+  - `SIGNALS_WS_TOPICS` (optional, comma-separated addresses for logs)
+  - `WS_HEARTBEAT_MS=20000`, `WS_IDLE_TIMEOUT_MS=45000`
+  - `WS_BACKOFF_MS=500`, `WS_MAX_BACKOFF_MS=15000`, `WS_JITTER_PCT=20`, `WS_MAX_RETRIES=0`
+  - `WS_MAX_INFLIGHT=4`, `HEAD_DEBOUNCE_MS=300`
+- Behavior:
+  - DEMO_MODE=true → never attempt WS; falls back to poll.
+  - After 5 rapid failures (60s window) → soft-disable WS and log `ws:fallback_to_poll`.
+  - No secrets/addresses printed; masked logs only.
+
+## Metrics & Alerts
+- Metrics snapshot included under `/metrics` payload as `signals`.
+- Counters/gauges/histograms:
+  - `signals_ticks_total`, `signals_windows_built_total`, `signals_emitted_total`, `signals_attestations_total`
+  - `signals_compute_ms_p50`, `signals_compute_ms_p95`
+  - WS: `signals_ws_connects_total`, `signals_ws_reconnects_total`, `signals_ws_errors_total`, `signals_ws_skipped_triggers_total`, `signals_ws_connected`, `signals_ws_compute_ms_p50`, `signals_ws_compute_ms_p95`
+- Alerts (optional; when `ALERTS_ENABLED==='true'` & `SIGNALS_ENABLED==='true'`):
+  - If `signals_emitted_total` stays 0 for >10m → alert `signals_silence`.
+  - If `signals_compute_ms_p95` > `SIGNALS_COMPUTE_P95_MS` (default 300) → alert `signals_slow`.
+
+## Rehearsal
+```
+HEALTH_PORT=3000 pnpm run rehearse:signals    # poll/stub demo
+HEALTH_PORT=3000 pnpm run rehearse:ws         # WS if enabled + URL present; else poll
+```
+
+## HMAC usage (optional)
+```
+export HMAC_API_SECRET=secret123
+HEADERS=$(node tools/hmac_sign.js GET "")
+echo "$HEADERS"
+curl -fsS -H "X-Timestamp: <from tool>" -H "X-Signature: <from tool>" "$BASE/signals"
+```
+
+## Go-Live (canary)
+```
+HEALTH_PORT=3000 pnpm run rehearse:signals
+
+PRESET=live pnpm run env:gen
+bash ops/safe_mode.sh
+pnpm run signoff
+
+# enable signals only (broadcast remains off)
+# edit .env.prod: set SIGNALS_ENABLED=true; keep SIGNALS_BROADCAST_ENABLED=false
+pm2 reload ecosystem.config.js --update-env
+
+# manual admin test in TG: /signals_now
+```
 # Signals (optional, default-off)
 
 This is a thin scoring layer over discovery ticks with attestation and redacted exposure. It is default-off and env-gated. No changes to existing HTTP/Telegram contracts.
