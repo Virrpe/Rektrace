@@ -90,6 +90,33 @@ HEALTH_PORT=3000 pnpm run rehearse:signals
 bash scripts/signals_budget_smoke.sh
 ```
 
+### Quiet Hours / Emergency Mute / Partner Allow-list (env-gated; default OFF)
+
+Precedence: muted > quiet_hours > allowlist > posting budget > cooldown.
+
+Env (append to .env.prod as needed):
+```
+SIGNALS_QUIET_ENABLED=false
+SIGNALS_QUIET_WINDOW_UTC=00:00-06:00
+SIGNALS_QUIET_ADMIN_OVERRIDE=false
+SIGNALS_EMERGENCY_MUTE=false
+SIGNALS_PARTNER_ALLOW_ENABLED=false
+SIGNALS_PARTNER_ALLOW_FILE=ops/allowlist.txt
+```
+
+Behavior:
+- Emergency Mute: if `SIGNALS_EMERGENCY_MUTE=true`, all TG posts suppressed. `/signals_now` replies "Broadcast muted." (admin override only if `SIGNALS_QUIET_ADMIN_OVERRIDE=true`).
+- Quiet Hours: if `SIGNALS_QUIET_ENABLED=true` and current UTC is inside any window from `SIGNALS_QUIET_WINDOW_UTC` (e.g., `00:00-06:00,22:00-23:00`), posts are suppressed unless admin override enabled and caller is admin.
+- Partner Allow-list: if `SIGNALS_PARTNER_ALLOW_ENABLED=true`, only symbols/addresses present in `SIGNALS_PARTNER_ALLOW_FILE` are allowed. Lines are lowercased symbols or 0x addresses; reloads on mtime or every ~60s.
+
+Metrics:
+```
+signals_post_denied_quiet_total
+signals_post_denied_muted_total
+signals_post_denied_allowlist_total
+```
+
+
 ## Backtest
 ```
 BASE_URL=http://127.0.0.1:${HEALTH_PORT:-3000}

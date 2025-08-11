@@ -1,7 +1,8 @@
 import Redis from 'ioredis';
 import type { Signal } from './schemas.js';
 import { shouldPost } from './posting_budget.js';
-import { notePostDecision } from '../observability/signals_metrics.js';
+import { notePostDecision, noteQuietMuteAllowlist } from '../observability/signals_metrics.js';
+import { whyQuiet, shouldAllowByPartnerList } from './quiet_hours.js';
 
 function getRedis(): Redis | null { const url = process.env.REDIS_URL || ''; return url ? new Redis(url) : null as any; }
 const memPosted = new Map<string, number>();
@@ -23,8 +24,26 @@ export async function maybePostSignals(api: ApiLike, chatId: number, signals: Si
       if (Date.now() - ts < 10 * 60 * 1000) posted = true;
     }
     if (posted) continue;
-    // posting budget gate (env-gated; default disabled → allow)
+    // quiet hours / emergency mute gate
     const isAdmin = false; // broadcast path is not user-initiated; admin override applies only to commands
+    const q = whyQuiet(new Date(), { admin: isAdmin });
+    if (q) {
+      noteQuietMuteAllowlist(q === 'muted' ? 'muted' : 'quiet_hours');
+      try { console.log(JSON.stringify({ at: 'signals.post.denied', reason: q, attestationId: s.attestationId })); } catch {}
+      continue;
+    }
+
+    // partner allow-list gate
+    try {
+      const { allow, reason } = await shouldAllowByPartnerList(s.pair.symbol, s.pair.address);
+      if (!allow) {
+        noteQuietMuteAllowlist('allowlist_block');
+        try { console.log(JSON.stringify({ at: 'signals.post.denied', reason: reason || 'allowlist_block', attestationId: s.attestationId })); } catch {}
+        continue;
+      }
+    } catch {}
+
+    // posting budget gate (env-gated; default disabled → allow)
     const dec = await shouldPost(Date.now(), { admin: isAdmin });
     notePostDecision(dec);
     if (!dec.allow) {

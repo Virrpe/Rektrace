@@ -21,6 +21,9 @@ let postDeniedClamp = 0;
 let postSampledDrop = 0;
 let postHourUsed = 0;
 let postDayUsed = 0;
+let postDeniedQuiet = 0;
+let postDeniedMuted = 0;
+let postDeniedAllowlist = 0;
 
 const computeLat: number[] = [];
 const wsComputeLat: number[] = [];
@@ -76,6 +79,9 @@ export function snapshotSignalsMetrics() {
     signals_post_sampled_drop_total: postSampledDrop,
     signals_post_hour_used: postHourUsed,
     signals_post_day_used: postDayUsed,
+    signals_post_denied_quiet_total: postDeniedQuiet,
+    signals_post_denied_muted_total: postDeniedMuted,
+    signals_post_denied_allowlist_total: postDeniedAllowlist,
   };
 }
 
@@ -90,6 +96,15 @@ export function notePostDecision(decision: { allow: boolean; reason: string; hou
     case 'day_cap': postDeniedDayCap++; break;
     case 'clamp_deny': postDeniedClamp++; break;
     case 'clamp_sample_drop': postSampledDrop++; break;
+    default: break;
+  }
+}
+
+export function noteQuietMuteAllowlist(reason: 'quiet_hours'|'muted'|'allowlist_block') {
+  switch (reason) {
+    case 'quiet_hours': postDeniedQuiet++; break;
+    case 'muted': postDeniedMuted++; break;
+    case 'allowlist_block': postDeniedAllowlist++; break;
     default: break;
   }
 }

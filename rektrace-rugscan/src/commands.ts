@@ -14,6 +14,7 @@ import { computeTopSignals } from '../../src/signals/compute.js';
 import { maybePostSignals } from '../../src/signals/broadcast.js';
 import { shouldPost } from '../../src/signals/posting_budget.js';
 import { notePostDecision } from '../../src/observability/signals_metrics.js';
+import { whyQuiet, shouldAllowByPartnerList } from '../../src/signals/quiet_hours.js';
 
 function badge(score: number) { return score>=80?'🟢':score>=60?'🟡':'🔴'; }
 function fmtFlags(flags: string[]) { return flags.slice(0,5).map(f=>`• ${escapeMD(f)}`).join('\n'); }
@@ -41,6 +42,15 @@ export function registerRugScan(bot: Bot) {
       const sigs = await computeTopSignals(5);
       const first = sigs[0]?.attestationId || '';
       await maybePostSignals({ sendMessage: (chatId, text, opts) => ctx.api.sendMessage(chatId, text, opts) }, ctx.chat!.id, sigs, async (s) => {
+        const q = whyQuiet(new Date(), { admin: true });
+        if (q) {
+          await ctx.reply(q === 'muted' ? 'Broadcast muted.' : 'Quiet hours active.');
+          return;
+        }
+        try {
+          const { allow } = await shouldAllowByPartnerList(s.pair.symbol, s.pair.address);
+          if (!allow) return;
+        } catch {}
         const dec = await shouldPost(Date.now(), { admin: true });
         notePostDecision(dec);
         if (!dec.allow) {
