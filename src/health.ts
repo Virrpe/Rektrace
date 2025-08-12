@@ -1,8 +1,8 @@
 import http from 'node:http';
-import { getProviderMetrics, getGoldrushUsage } from './metrics.js';
+import { getProviderMetrics, getGoldrushUsage, getBotMetrics } from './metrics.js';
 import { snapshotSignalsMetrics } from './observability/signals_metrics.js';
 
-export function startHealthServer(port = Number(process.env.HEALTH_PORT || 3000), routes?: (req: http.IncomingMessage, res: http.ServerResponse) => boolean | Promise<boolean>) {
+export function startHealthServer(port = Number(process.env.HEALTH_PORT ?? process.env.PORT ?? 3000), routes?: (req: http.IncomingMessage, res: http.ServerResponse) => boolean | Promise<boolean>) {
   const started = Date.now();
   const srv = http.createServer((req, res) => {
     try {
@@ -59,6 +59,7 @@ export function startHealthServer(port = Number(process.env.HEALTH_PORT || 3000)
           providers: getProviderMetrics(),
           goldrushUsage: getGoldrushUsage(),
           signals: (()=>{ try { return snapshotSignalsMetrics(); } catch { return undefined; } })(),
+          bot: (()=>{ try { return getBotMetrics(); } catch { return undefined; } })(),
         };
         res.writeHead(200, { 'content-type': 'application/json' });
         res.end(JSON.stringify(payload));

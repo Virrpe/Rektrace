@@ -23,16 +23,47 @@ function badge(score: number) { return score>=80?'🟢':score>=60?'🟡':'🔴';
 function fmtFlags(flags: string[]) { return flags.slice(0,5).map(f=>`• ${escapeMD(f)}`).join('\n'); }
 
 export function registerRugScan(bot: Bot) {
+  // --- UX: /start and /help (SV default, /help en for English)
+  bot.command('start', async (ctx) => {
+    try { const { botMetrics } = await import('../../src/metrics.js'); botMetrics.bot_requests_total++; } catch {}
+    const text = [
+      'Hej! 👋 Jag skannar nya tokens och visar risk‑signaler.',
+      'Snabbstart:',
+      '• /scan ink:<token> — snabb koll',
+      '• /scan_plus ink:<token> — extra data + snipers‑rad',
+      '• /snipers ink:<token> — tidiga köpare (120s), Top1/Top3, bedömning',
+      '• /sniper <adress> — enkel sniper‑profil',
+      '• /watch ink:<token> — lägg till bevakning, /my_watchlist — se dina',
+      'Obs: Det här är signaler, inte garantier. Handla ansvarsfullt.',
+      'Skriv /help en för engelska.',
+    ].join('\n');
+    return ctx.reply(text);
+  });
+
   bot.command('help', async ctx => {
-    return ctx.reply([
-      '*RekTrace RugScanner* — Ink-first',
-      '',
+    try { const { botMetrics } = await import('../../src/metrics.js'); botMetrics.bot_requests_total++; } catch {}
+    const lang = (ctx.match || '').trim().toLowerCase();
+    const sv = [
+      'Kommandon:',
+      '/scan ink:<token> — snabb riskbild',
+      '/scan_plus ink:<token> — mer data + “Snipers: …”',
+      '/snipers ink:<token> — fönster 120s: unika köpare, Top1/Top3, nivå',
+      '/sniper <adress> — senaste early‑window‑träffar',
+      '/watch ink:<token>, /unwatch ink:<token>, /my_watchlist',
+      'Tips: Om resultat saknas visas “insufficient data”.',
+      'Ansvarsfriskrivning: Detta är signaler, inte råd.',
+    ].join('\n');
+    const en = [
       'Commands:',
-      '`/scan <query>` — defaults to ink: when no prefix',
-      '`/scan ink:pepe` — explicit chain prefix',
-      '`/top_ink` — top Ink pairs (DexScreener), 6 per page',
-      '`/my_alerts` — manage alert subscriptions'
-    ].join('\n'), { parse_mode: 'Markdown' });
+      '/scan ink:<token> — quick risk view',
+      '/scan_plus ink:<token> — extra data + “Snipers: …”',
+      '/snipers ink:<token> — first 120s buyers, Top1/Top3, level',
+      '/sniper <address> — simple sniper profile',
+      '/watch ink:<token>, /unwatch ink:<token>, /my_watchlist',
+      'Note: Results are signals, not guarantees. Trade responsibly.',
+    ].join('\n');
+    const text = lang === 'en' ? en : sv + '\n(Skriv /help en för engelska.)';
+    return ctx.reply(text);
   });
 
   // /signals_now — admin only; computes and posts top 5, env-gated
@@ -187,28 +218,11 @@ export function registerRugScan(bot: Bot) {
     return ctx.reply(bits.join('\n'), { parse_mode: 'Markdown' });
   });
 
-  // Simple per-user rate limiting for sniper commands (mirror /scan guard)
-  const SN_RATE_WINDOW_MS = 10_000;
-  const SN_RATE_PER_USER = 5;
-  const snHits = new Map<number, number[]>();
-  async function sniperGuard(ctx: any): Promise<boolean> {
-    const uid = ctx.from?.id;
-    if (!uid) return true;
-    const now = Date.now();
-    const arr = snHits.get(uid) || [];
-    const recent = arr.filter((ts) => now - ts < SN_RATE_WINDOW_MS);
-    if (recent.length >= SN_RATE_PER_USER) {
-      await ctx.reply('Rate limit: try again in a few seconds.');
-      return false;
-    }
-    recent.push(now);
-    snHits.set(uid, recent);
-    return true;
-  }
+  // Rate limiting for sniper commands is applied via global guard in index.ts
 
   // /snipers <tokenOrAddress>
   bot.command('snipers', async (ctx) => {
-    if (!(await sniperGuard(ctx))) return;
+    try { const { botMetrics } = await import('../../src/metrics.js'); botMetrics.bot_requests_total++; botMetrics.snipers_requests_total++; } catch {}
     const q = ctx.match?.trim();
     if (!q) return ctx.reply('Usage: /snipers <token|contract>');
     // default-to-ink when no chain prefix
@@ -221,6 +235,7 @@ export function registerRugScan(bot: Bot) {
       const win = await fetchEarlyWindow(it.chain, it.address, undefined);
       const windowSec = Math.round(win.windowMs / 1000);
       if (win.dataStatus !== 'ok') {
+        try { const { botMetrics } = await import('../../src/metrics.js'); botMetrics.snipers_insufficient_total++; } catch {}
         return ctx.reply([`Early Sniper Check (${windowSec}s)`, 'Data: insufficient (no early trades or T0)'].join('\n'));
       }
       const { summary, events } = scoreEarlyWindow(win);
@@ -237,13 +252,14 @@ export function registerRugScan(bot: Bot) {
       return ctx.reply(lines.join('\n'));
     } catch {
       const windowSec = Math.round((Number(process.env.SNIPER_T_SECONDS ?? 120)));
+      try { const { botMetrics } = await import('../../src/metrics.js'); botMetrics.snipers_insufficient_total++; } catch {}
       return ctx.reply([`Early Sniper Check (${windowSec}s)`, 'Data: insufficient (no early trades or T0)'].join('\n'));
     }
   });
 
   // /sniper <address>
   bot.command('sniper', async (ctx) => {
-    if (!(await sniperGuard(ctx))) return;
+    try { const { botMetrics } = await import('../../src/metrics.js'); botMetrics.bot_requests_total++; botMetrics.sniper_profile_requests_total++; } catch {}
     const addr = (ctx.match || '').trim();
     if (!addr) return ctx.reply('Usage: /sniper <address>');
     const p = await getSniperProfile(addr);
@@ -497,4 +513,65 @@ function buildExplorerLink(chain: string, ref: string): string {
   return `https://example.com/${encodeURIComponent(ref)}`;
 }
 
+
+// Minimal handler factories for tests (no business logic changes). Production uses bot.command above.
+export function createSnipersHandler(deps: {
+  scanToken: (q: string) => Promise<any>;
+  fetchEarlyWindow: (chain: string, token: string, pair?: string) => Promise<any>;
+  scoreEarlyWindow: (win: any) => { summary: { level: string; uniqueBuyers: number; top1Pct: number; top3Pct: number; botting?: string } };
+  rlAllow?: () => boolean;
+}) {
+  const { scanToken, fetchEarlyWindow, scoreEarlyWindow, rlAllow } = deps;
+  return async function handle(ctx: any) {
+    if (rlAllow && !rlAllow()) return; // simulate RL wrapper
+    const q = ctx.match?.trim();
+    if (!q) return ctx.reply('Usage: /snipers <token|contract>');
+    const hasPrefix = /^(eth|ink|bsc|arb|op|base|avax|ftm|sol):/i.test(q);
+    const qNorm = hasPrefix ? q : `ink:${q}`;
+    const res = await scanToken(qNorm);
+    if (res.status !== 'ok' || !res.items.length) return ctx.reply('Not found or ambiguous. Try /scan first.');
+    const it = res.items[0];
+    try {
+      const win = await fetchEarlyWindow(it.chain, it.address, undefined);
+      const windowSec = Math.round(win.windowMs / 1000);
+      if (win.dataStatus !== 'ok') {
+        return ctx.reply([`Early Sniper Check (${windowSec}s)`, 'Data: insufficient (no early trades or T0)'].join('\n'));
+      }
+      const { summary, events } = scoreEarlyWindow(win) as any;
+      const lines: string[] = [];
+      lines.push(`Early Sniper Check (${windowSec}s)`);
+      lines.push(`• Unique buyers: ${summary.uniqueBuyers}`);
+      lines.push(`• Top1: ${summary.top1Pct}% | Top3: ${summary.top3Pct}%`);
+      lines.push(`• Assessment: ${String(summary.level).toUpperCase()}`);
+      if (summary.botting) lines.push(`Botting: ${String(summary.botting).toUpperCase()}`);
+      return ctx.reply(lines.join('\n'));
+    } catch {
+      const windowSec = Math.round((Number(process.env.SNIPER_T_SECONDS ?? 120)));
+      return ctx.reply([`Early Sniper Check (${windowSec}s)`, 'Data: insufficient (no early trades or T0)'].join('\n'));
+    }
+  };
+}
+
+export function createSniperHandler(deps: {
+  getSniperProfile: (addr: string) => Promise<any | undefined>;
+  rlAllow?: () => boolean;
+}) {
+  const { getSniperProfile, rlAllow } = deps;
+  return async function handle(ctx: any) {
+    if (rlAllow && !rlAllow()) return;
+    const addr = (ctx.match || '').trim();
+    if (!addr) return ctx.reply('Usage: /sniper <address>');
+    const p = await getSniperProfile(addr);
+    if (!p) return ctx.reply('No sniper activity recorded yet (v1)');
+    const iso = (ms?: number) => (ms ? new Date(ms).toISOString() : '—');
+    const recent = (p.recentTokens || []).slice(-3).map((r: any) => r.token).join(', ');
+    const lines = [
+      `Sniper Profile ${addr}`,
+      `• Snipes (30d): ${p.snipes30d}`,
+      `• Recent: ${recent || '—'}`,
+      `• First seen: ${iso(p.firstSeen)} | Last seen: ${iso(p.lastSeen)}`,
+    ];
+    return ctx.reply(lines.join('\n'));
+  };
+}
 

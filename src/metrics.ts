@@ -73,3 +73,16 @@ export function getGoldrushUsage() {
 }
 
 
+// --- Bot (Telegram) minimal counters (in-memory only)
+export const botMetrics = {
+  bot_requests_total: 0,
+  snipers_requests_total: 0,
+  snipers_insufficient_total: 0,
+  sniper_profile_requests_total: 0,
+};
+
+export function getBotMetrics() {
+  // return a shallow snapshot; do not reset
+  return { ...botMetrics };
+}
+
