@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import dotenv from 'dotenv';
-if (fs.existsSync('.env.local')) dotenv.config({ path: '.env.local' }); else dotenv.config();
+const _envPath = fs.existsSync('.env.prod') ? '.env.prod' : (fs.existsSync('.env.local') ? '.env.local' : null);
+if (_envPath) dotenv.config({ path: _envPath, override: true }); else dotenv.config();
 import { Bot } from 'grammy';
 import { registerRugScan } from './commands.js';
 import { registerPreflight } from '../../src/preflight.js';
@@ -29,7 +30,6 @@ import { checkIdempotency } from '../../src/security/idempotency.js';
 import { validateScanResponse, maskInvariantErrors } from '../../src/contracts/invariants.js';
 import { recordLatency, recordError, snapshotSLO, recordRoute, snapshotRoutes } from '../../src/observability/slo.js';
 import { configFingerprint } from '../../src/observability/fingerprint.js';
-import { startAlertLoop } from '../../src/observability/alerts.js';
 import { startAutoGuard, autoGuardState, maybeDenyHeavyScan, maybeForceStub } from '../../src/security/auto_guard.js';
 import { startBudgetGuard } from '../../src/observability/budget_guard.js';
 import { startRulesReload, ruleDecision } from '../../src/security/rules.js';
@@ -132,12 +132,14 @@ bot.command('ad_terms', (ctx) => ctx.reply(
   ].join('\n')
 ));
 
-// --- Simple per-user rate limiting for /scan ---
+// --- Simple per-user rate limiting for /scan, /snipers, /sniper ---
 const RATE_WINDOW_MS = 10_000;
 const RATE_PER_USER = 5;
 const userHits = new Map<number, number[]>();
 async function scanGuard(ctx: Context, next: NextFunction) {
-  if (ctx.msg?.text?.startsWith('/scan')) {
+  const text = ctx.msg?.text || '';
+  const isGuarded = text.startsWith('/scan') || text.startsWith('/snipers') || text.startsWith('/sniper');
+  if (isGuarded) {
     const uid = ctx.from?.id;
     if (uid) {
       const now = Date.now();
@@ -250,7 +252,11 @@ try {
 
     // Liveness endpoint
     if (req.method === 'GET' && url.pathname === '/live') {
-      try { const { getOrCreateRequestId } = await import('../../src/observability/request_id.js'); getOrCreateRequestId(req, res); } catch {}
+      try {
+        const { getOrCreateRequestId, logHttpJson } = await import('../../src/observability/request_id.js');
+        const rid = getOrCreateRequestId(req, res);
+        logHttpJson({ reqId: rid, method: 'GET', route: '/live', status: 200, ms: 0 });
+      } catch {}
       res.writeHead(200, { 'content-type': 'text/plain' });
       res.end('ok');
       return true;
@@ -318,7 +324,12 @@ try {
       const body = { slo, routesSummary: (()=>{ try { return snapshotRoutes(); } catch { return undefined; } })(), config: cfg, signals: redacted };
       res.writeHead(200, { 'content-type': 'application/json' });
       res.end(JSON.stringify(body));
-      try { recordRoute('/status', 0, false); } catch {}
+      try {
+        recordRoute('/status', 0, false);
+        const { getOrCreateRequestId, logHttpJson } = await import('../../src/observability/request_id.js');
+        const rid = getOrCreateRequestId(req, res);
+        logHttpJson({ reqId: rid, method: 'GET', route: '/status/public', status: 200, ms: 0 });
+      } catch {}
       return true;
     }
 

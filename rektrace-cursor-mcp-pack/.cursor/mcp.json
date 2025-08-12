@@ -1,0 +1,17 @@
+{
+  "runtimes": {
+    "process-sentinel": {
+      "command": "node",
+      "args": ["./node_modules/tsx/dist/cli.mjs","mcp/process-sentinel/server.ts"],
+      "env": { "LOG_ROOT": "logs", "NO_PROGRESS_TIMEOUT_S": "300" }
+    },
+    "git-tools": {
+      "command": "node",
+      "args": ["./node_modules/tsx/dist/cli.mjs","mcp/git-tools/server.ts"]
+    },
+    "http-probe": {
+      "command": "node",
+      "args": ["./node_modules/tsx/dist/cli.mjs","mcp/http-probe/server.ts"]
+    }
+  }
+}

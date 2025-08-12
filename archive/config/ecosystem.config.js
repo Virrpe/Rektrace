@@ -1,4 +1,6 @@
-// CommonJS export for PM2 ecosystem; Node may run in ESM mode in this repo
+// Archived duplicate PM2 ecosystem config (canonical is ecosystem.config.cjs)
+// This copy is retained for reference only and is not used by ops/pm2_start.sh.
+// If you need to restore, move back to project root as ecosystem.config.js.
 module.exports = {
   apps: [
     {

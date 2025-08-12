@@ -129,11 +129,11 @@ export async function resolveContracts(query: string): Promise<Record<string,str
 }
 
 export async function holdersEvmBitquery(chain: string, contract: string): Promise<number | null> {
-  return null; // Bitquery key not wired in this minimal zip; add later
+  return null; // optional fallback stub: returns null by design (Bitquery key not wired)
 }
 
 export async function holdersEvmMoralis(chain: string, contract: string): Promise<number | null> {
-  return null; // placeholder; plug Moralis or other providers as you get keys
+  return null; // optional fallback stub: returns null by design (Moralis not wired)
 }
 
 // Covalent: uses pagination.total_count from token holders endpoint

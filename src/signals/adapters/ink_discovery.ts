@@ -18,11 +18,32 @@ async function fetchPairsForChain(chain: string): Promise<Array<{ address: strin
     const res = await request(url);
     const j: any = await res.body.json();
     const pairs = (j.pairs || []) as any[];
-    return pairs.slice(0, 50).map(p => ({
+    const mapped = pairs.slice(0, 50).map(p => ({
       address: p.pairAddress || p.baseToken?.address || '',
       symbol: p.baseToken?.symbol ? `${p.baseToken.symbol}/${p.quoteToken?.symbol || ''}` : undefined,
       priceUsd: typeof p.priceUsd === 'number' ? p.priceUsd : undefined,
     })).filter(x=>x.address);
+    if (mapped.length > 0) return mapped;
+  } catch {
+    // ignore and try fallback
+  }
+
+  // Fallback: DexScreener search API, filter by chainId
+  try {
+    const q = encodeURIComponent(chain);
+    const url2 = `https://api.dexscreener.com/latest/dex/search?q=${q}`;
+    const res2 = await request(url2);
+    const j2: any = await res2.body.json();
+    const pairs2 = (j2.pairs || []) as any[];
+    return pairs2
+      .filter(p => (p.chainId || '').toLowerCase() === chain.toLowerCase())
+      .slice(0, 50)
+      .map(p => ({
+        address: p.pairAddress || p.baseToken?.address || '',
+        symbol: p.baseToken?.symbol ? `${p.baseToken.symbol}/${p.quoteToken?.symbol || ''}` : undefined,
+        priceUsd: typeof p.priceUsd === 'number' ? p.priceUsd : undefined,
+      }))
+      .filter(x => x.address);
   } catch {
     return [];
   }
@@ -31,7 +52,7 @@ async function fetchPairsForChain(chain: string): Promise<Array<{ address: strin
 export function startInkDiscovery(opts: { onTick: (t: TradeTick) => void; onInfo?: (msg: string) => void }): Stopper {
   const { onTick, onInfo } = opts;
   const ms = Math.max(1000, Number(process.env.SIGNALS_POLL_MS ?? 5000));
-  const DEMO = process.env.DEMO_MODE === 'true';
+  const DEMO = String(process.env.DEMO_MODE || '').toLowerCase() === 'true';
   const r = getRedis();
   const memSeen = new Map<string, number>(); // key -> ts
 

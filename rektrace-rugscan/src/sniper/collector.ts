@@ -1,4 +1,4 @@
-import { request } from 'undici';
+import { request as undiciRequest } from 'undici';
 import Redis from 'ioredis';
 import { MemoryCache, RedisCache, type CacheLike } from '../../../src/cache.js';
 import { enrichToken } from '../enrich.js';
@@ -65,7 +65,7 @@ async function fetchPairTxsInWindow(chain: string, pairAddress: string, t0Ms: nu
     // Fetch first page ascending and a small next page to cover ~early window
     // Covalent does not support direct time filtering on this endpoint in free tier; we'll fetch first ~200 asc
     const url = `https://api.covalenthq.com/v1/${cid}/address/${pairAddress}/transactions_v2/?page-size=200&block-signed-at-asc=true&key=${encodeURIComponent(key)}`;
-    const res = await request(url);
+    const res = await undiciRequest(url);
     const j: any = await res.body.json();
     const items = Array.isArray(j?.data?.items) ? j.data.items : [];
     const t1 = t0Ms + windowMs;
@@ -83,6 +83,14 @@ async function fetchPairTxsInWindow(chain: string, pairAddress: string, t0Ms: nu
   } catch {
     return undefined;
   }
+}
+
+// Test seam: overrideable HTTP implementation for explorer fallback only
+type HttpResponse = { statusCode: number; body: { json: () => Promise<any> } };
+type HttpImpl = (url: string, init?: any) => Promise<HttpResponse>;
+let httpImpl: HttpImpl = undiciRequest as unknown as HttpImpl;
+export function __testOnly_setHttpImpl(impl?: HttpImpl) {
+  httpImpl = (impl || (undiciRequest as unknown as HttpImpl));
 }
 
 export async function fetchEarlyWindow(
@@ -113,9 +121,38 @@ export async function fetchEarlyWindow(
     const hit = await c.get<EarlyWindow>(cacheKey);
     if (hit) return hit;
 
-    const txs = await fetchPairTxsInWindow(chain, pair, t0, wMs);
+    let txs = await fetchPairTxsInWindow(chain, pair, t0, wMs);
+    // Optional REST explorer fallback for early trades — disabled by default
+    // Env flags:
+    // - EXPLORER_FALLBACK_ENABLED=false
+    // - EXPLORER_BASE_URL_INK (string; optional)
+    if ((!txs || txs.length === 0) && process.env.EXPLORER_FALLBACK_ENABLED === 'true') {
+      try {
+        const base = process.env.EXPLORER_BASE_URL_INK || '';
+        const inkwanted = chain.toLowerCase() === 'ink';
+        if (base && inkwanted) {
+          const start = t0;
+          const end = t0 + wMs;
+          const url = `${base.replace(/\/$/, '')}/api/logs?pair=${encodeURIComponent(pair)}&start=${start}&end=${end}`;
+          const resp = await httpImpl(url, { method: 'GET', headers: { 'accept': 'application/json' } });
+          if (resp.statusCode === 200) {
+            const json: any = await resp.body.json().catch(()=>({}));
+            const items: Array<{ from?: string; ts?: number; amountUsd?: number }>
+              = Array.isArray(json?.logs) ? json.logs : Array.isArray(json) ? json : [];
+            if (items.length > 0) {
+              txs = items
+                .filter(it => typeof it.ts === 'number' && it.ts >= start && it.ts <= end)
+                .map(it => ({ from: String(it.from||'').toLowerCase(), ts: Number(it.ts), amountUsd: typeof it.amountUsd==='number'?it.amountUsd:undefined }));
+            }
+          }
+        }
+      } catch {
+        // Best-effort; ignore errors and fall through
+      }
+    }
     if (!txs) {
-      const v: EarlyWindow = { t0, windowMs: wMs, trades: [], dataStatus: 'unavailable', reason: 'provider_error' };
+      // After fallback failure, surface as "insufficient" with provider_error to match REST fallback contract
+      const v: EarlyWindow = { t0, windowMs: wMs, trades: [], dataStatus: 'insufficient', reason: 'provider_error' };
       await c.set(cacheKey, v, 60);
       return v;
     }

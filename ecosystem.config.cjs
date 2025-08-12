@@ -11,6 +11,7 @@ module.exports = {
       node_args: '--enable-source-maps',
       env: {
         NODE_ENV: 'production',
+        HEALTH_PORT: '8081',
         // Other env is sourced from .env.prod via deploy script/pm2 --update-env
       },
       merge_logs: true,

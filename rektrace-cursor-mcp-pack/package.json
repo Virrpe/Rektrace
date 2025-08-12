@@ -1,0 +1,20 @@
+{
+  "name": "rektrace-cursor-mcp-pack",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b mcp/process-sentinel mcp/git-tools mcp/http-probe",
+    "start:sentinel": "tsx mcp/process-sentinel/server.ts",
+    "start:git": "tsx mcp/git-tools/server.ts",
+    "start:http": "tsx mcp/http-probe/server.ts"
+  },
+  "dependencies": {
+    "execa": "^8.0.1",
+    "vscode-jsonrpc": "^8.2.0"
+  },
+  "devDependencies": {
+    "tsx": "^4.15.3",
+    "typescript": "~5.5.4"
+  }
+}

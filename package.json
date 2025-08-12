@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "engines": { "node": ">=20 <21", "pnpm": ">=9" },
+  "engines": {
+    "node": ">=20 <21",
+    "pnpm": ">=9"
+  },
   "optionalDependencies": {
     "ws": "^8.17.0"
   },
@@ -19,7 +22,6 @@
     "start:rugscan": "node dist/rektrace-rugscan/rektrace-rugscan/src/index.js",
     "test": "jest --runInBand",
     "test:all": "jest --runInBand",
-    
     "docs:check": "tsx tools/check-docs.ts",
     "docs:open": "echo 'Open docs in Cursor preview'",
     "canary:node": "node tools/canary_node.cjs",
@@ -53,16 +55,16 @@
     "ci:beta": "npm run test && bash scripts/smoke_mvp.sh || exit 1",
     "signoff": "bash scripts/signoff.sh",
     "package:rugscan": "bash scripts/package_rugscan.sh",
-    "verify:pm2": "bash scripts/verify_pm2_target.sh"
-    ,"go:live": "bash ops/go_live.sh"
-    ,"watch:post": "bash ops/watch_post_launch.sh"
-    ,"rollback:last": "bash ops/rollback_last.sh"
-    ,"perf:baseline": "bash scripts/baseline_perf.sh"
-    ,"perf:gate": "bash scripts/perf_gate.sh"
-    ,"rehearse:launch": "bash ops/rehearse_launch.sh"
-    ,"drill:freeze": "bash ops/drill_freeze.sh"
-    ,"rules:flip": "bash ops/flip_rules.sh"
-    ,"release:audit": "bash scripts/audit_pack.sh"
+    "verify:pm2": "bash scripts/verify_pm2_target.sh",
+    "go:live": "bash ops/go_live.sh",
+    "watch:post": "bash ops/watch_post_launch.sh",
+    "rollback:last": "bash ops/rollback_last.sh",
+    "perf:baseline": "bash scripts/baseline_perf.sh",
+    "perf:gate": "bash scripts/perf_gate.sh",
+    "rehearse:launch": "bash ops/rehearse_launch.sh",
+    "drill:freeze": "bash ops/drill_freeze.sh",
+    "rules:flip": "bash ops/flip_rules.sh",
+    "release:audit": "bash scripts/audit_pack.sh"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
@@ -82,5 +84,6 @@
     "jest": "^29.7.0",
     "ts-jest": "^29.2.4",
     "@types/jest": "^29.5.12"
-  }
+  },
+  "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
 }

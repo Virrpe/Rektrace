@@ -12,6 +12,7 @@ fi
 APP_NAME=${APP_NAME:-rektrace}
 
 ECOSYS=""
+# canonical: ecosystem.config.cjs (ecosystem.config.js is archived under archive/config/)
 if [ -f ecosystem.config.cjs ]; then ECOSYS=ecosystem.config.cjs; fi
 if [ -z "$ECOSYS" ] && [ -f ecosystem.config.js ]; then ECOSYS=ecosystem.config.js; fi
 
