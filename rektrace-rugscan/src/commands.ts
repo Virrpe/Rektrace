@@ -15,6 +15,9 @@ import { maybePostSignals } from '../../src/signals/broadcast.js';
 import { shouldPost } from '../../src/signals/posting_budget.js';
 import { notePostDecision } from '../../src/observability/signals_metrics.js';
 import { whyQuiet, shouldAllowByPartnerList } from '../../src/signals/quiet_hours.js';
+import { fetchEarlyWindow } from './sniper/collector.js';
+import { scoreEarlyWindow } from './sniper/score.js';
+import { recordSniperEvent, getSniperProfile } from './sniper/profiles.js';
 
 function badge(score: number) { return score>=80?'🟢':score>=60?'🟡':'🔴'; }
 function fmtFlags(flags: string[]) { return flags.slice(0,5).map(f=>`• ${escapeMD(f)}`).join('\n'); }
@@ -38,10 +41,14 @@ export function registerRugScan(bot: Bot) {
     if (!enabled) return ctx.reply('Signals broadcast disabled.');
     const adminId = Number(process.env.ADMIN_CHAT_ID || '');
     if (!adminId || ctx.from?.id !== adminId) return ctx.reply('Unauthorized.');
-    try {
-      const sigs = await computeTopSignals(5);
-      const first = sigs[0]?.attestationId || '';
-      await maybePostSignals({ sendMessage: (chatId, text, opts) => ctx.api.sendMessage(chatId, text, opts) }, ctx.chat!.id, sigs, async (s) => {
+      try {
+        const sigs = await computeTopSignals(5);
+        if (!Array.isArray(sigs) || sigs.length === 0) {
+          await ctx.reply('No signals right now.');
+          return;
+        }
+        const first = sigs[0]?.attestationId || '';
+        await maybePostSignals({ sendMessage: (chatId, text, opts) => ctx.api.sendMessage(chatId, text, opts) }, ctx.chat!.id, sigs, async (s) => {
         const q = whyQuiet(new Date(), { admin: true });
         if (q) {
           await ctx.reply(q === 'muted' ? 'Broadcast muted.' : 'Quiet hours active.');
@@ -60,11 +67,14 @@ export function registerRugScan(bot: Bot) {
         const scanCb = await putCb(`full|${s.pair.chain}|${s.pair.address}`);
         const watchCb = await putCb(`alert|${s.pair.chain}|${s.pair.address}`);
         const shareCb = await putCb(`share|${s.pair.chain}|${s.pair.address}`);
-        const body = [
-          `📡 Signal: ${escapeMD(s.pair.symbol || s.pair.address.slice(0,6)+'…')} — score ${s.score}`,
-          `vol5m=${Math.round(s.metrics.vol5m)}  price15m=${s.metrics.price15m.toFixed(2)}%  maker5m=${s.metrics.maker5m.toFixed(3)}`,
-          `attestationId=${s.attestationId}`,
-        ].join('\n');
+          const vol5m = Math.round(Number((s as any)?.metrics?.vol5m ?? 0));
+          const price15mPct = Number((s as any)?.metrics?.price15m ?? 0);
+          const maker5m = Number((s as any)?.metrics?.maker5m ?? 0);
+          const body = [
+            `📡 Signal: ${escapeMD((s as any)?.pair?.symbol || (s as any)?.pair?.address?.slice(0,6)+'…')} — score ${(s as any)?.score ?? 0}`,
+            `vol5m=${isFinite(vol5m)?vol5m:0}  price15m=${isFinite(price15mPct)?price15mPct.toFixed(2):'0.00'}%  maker5m=${isFinite(maker5m)?maker5m.toFixed(3):'0.000'}`,
+            `attestationId=${(s as any)?.attestationId || ''}`,
+          ].join('\n');
         const kb = new InlineKeyboard().text('🔍 Scan', scanCb).text('🔔 Watch', watchCb).text('📰 Share', shareCb);
         await ctx.api.sendMessage(ctx.chat!.id, body, { parse_mode: 'Markdown', reply_markup: kb });
       });
@@ -160,9 +170,93 @@ export function registerRugScan(bot: Bot) {
       const topTrades = (enr.trades||[]).slice(0,3).map(t=>`${t.side==='buy'?'🟢':'🔴'} $${(t.amountUsd??0).toLocaleString()}`).join('  ');
       if (topTrades) bits.push(`  trades: ${topTrades}`);
       bits.push(fmtFlags(it.flags));
+      // Inject Snipers line (graceful degradation)
+      try {
+        const win = await fetchEarlyWindow(it.chain, it.address, enr.price?.pair);
+        if (win.dataStatus === 'ok') {
+          const { summary } = scoreEarlyWindow(win);
+          bits.push(`Snipers: ${summary.level} • Top1=${summary.top1Pct}% | Top3=${summary.top3Pct}%`);
+        } else {
+          bits.push(`Snipers: unknown (insufficient data)`);
+        }
+      } catch {
+        bits.push(`Snipers: unknown (insufficient data)`);
+      }
     }
     if (res.consensus) bits.push(`\nConsensus: *${res.consensus.score}* → ${res.consensus.decision.toUpperCase()}\n${fmtFlags(res.consensus.notes)}`);
     return ctx.reply(bits.join('\n'), { parse_mode: 'Markdown' });
+  });
+
+  // Simple per-user rate limiting for sniper commands (mirror /scan guard)
+  const SN_RATE_WINDOW_MS = 10_000;
+  const SN_RATE_PER_USER = 5;
+  const snHits = new Map<number, number[]>();
+  async function sniperGuard(ctx: any): Promise<boolean> {
+    const uid = ctx.from?.id;
+    if (!uid) return true;
+    const now = Date.now();
+    const arr = snHits.get(uid) || [];
+    const recent = arr.filter((ts) => now - ts < SN_RATE_WINDOW_MS);
+    if (recent.length >= SN_RATE_PER_USER) {
+      await ctx.reply('Rate limit: try again in a few seconds.');
+      return false;
+    }
+    recent.push(now);
+    snHits.set(uid, recent);
+    return true;
+  }
+
+  // /snipers <tokenOrAddress>
+  bot.command('snipers', async (ctx) => {
+    if (!(await sniperGuard(ctx))) return;
+    const q = ctx.match?.trim();
+    if (!q) return ctx.reply('Usage: /snipers <token|contract>');
+    // default-to-ink when no chain prefix
+    const hasPrefix = /^(eth|ink|bsc|arb|op|base|avax|ftm|sol):/i.test(q);
+    const qNorm = hasPrefix ? q : `ink:${q}`;
+    const res = await scanToken(qNorm);
+    if (res.status !== 'ok' || !res.items.length) return ctx.reply('Not found or ambiguous. Try /scan first.');
+    const it = res.items[0];
+    try {
+      const win = await fetchEarlyWindow(it.chain, it.address, undefined);
+      const windowSec = Math.round(win.windowMs / 1000);
+      if (win.dataStatus !== 'ok') {
+        return ctx.reply([`Early Sniper Check (${windowSec}s)`, 'Data: insufficient (no early trades or T0)'].join('\n'));
+      }
+      const { summary, events } = scoreEarlyWindow(win);
+      // Optional: record top participants
+      for (const e of events.slice(0, 5)) {
+        try { await recordSniperEvent(e.buyer, it.address, Date.now()); } catch {}
+      }
+      const lines: string[] = [];
+      lines.push(`Early Sniper Check (${windowSec}s)`);
+      lines.push(`• Unique buyers: ${summary.uniqueBuyers}`);
+      lines.push(`• Top1: ${summary.top1Pct}% | Top3: ${summary.top3Pct}%`);
+      lines.push(`• Assessment: ${summary.level.toUpperCase()}`);
+      if (summary.botting) lines.push(`Botting: ${summary.botting.toUpperCase()}`);
+      return ctx.reply(lines.join('\n'));
+    } catch {
+      const windowSec = Math.round((Number(process.env.SNIPER_T_SECONDS ?? 120)));
+      return ctx.reply([`Early Sniper Check (${windowSec}s)`, 'Data: insufficient (no early trades or T0)'].join('\n'));
+    }
+  });
+
+  // /sniper <address>
+  bot.command('sniper', async (ctx) => {
+    if (!(await sniperGuard(ctx))) return;
+    const addr = (ctx.match || '').trim();
+    if (!addr) return ctx.reply('Usage: /sniper <address>');
+    const p = await getSniperProfile(addr);
+    if (!p) return ctx.reply('No sniper activity recorded yet (v1)');
+    const iso = (ms?: number) => (ms ? new Date(ms).toISOString() : '—');
+    const recent = p.recentTokens.slice(-3).map(r => r.token).join(', ');
+    const lines = [
+      `Sniper Profile ${addr}`,
+      `• Snipes (30d): ${p.snipes30d}`,
+      `• Recent: ${recent || '—'}`,
+      `• First seen: ${iso(p.firstSeen)} | Last seen: ${iso(p.lastSeen)}`,
+    ];
+    return ctx.reply(lines.join('\n'));
   });
 
   bot.inlineQuery(/.*/, async (ctx) => {
