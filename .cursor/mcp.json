@@ -1,25 +1,20 @@
 {
-  "$schema": "https://raw.githubusercontent.com/modelcontextprotocol/spec/main/mcp.schema.json",
-  "servers": {
-    "prom-metrics-local": {
-      "transport": "stdio",
+  "mcpServers": {
+    "http-probe": {
       "command": "node",
-      "args": ["./node_modules/tsx/dist/cli.mjs", "mcp/prom-metrics/server.ts"],
-      "env": { "PROM_URL": "http://localhost:9090" }
+      "args": [
+        "./node_modules/tsx/dist/cli.mjs",
+        "mcp/http-probe/server.ts"
+      ],
+      "env": { "PORT": "5391" }
     },
-    "postgres-ro-local": {
-      "transport": "stdio",
+    "tg-notify": {
       "command": "node",
-      "args": ["./node_modules/tsx/dist/cli.mjs", "mcp/postgres-ro/server.ts"],
-      "env": {
-        "DATABASE_URL": "postgres://rektrace:rektrace@localhost:5432/rektrace",
-        "PGREADONLY": "true"
-      }
-    },
-    "tg-notify-local": {
-      "transport": "stdio",
-      "command": "node",
-      "args": ["./node_modules/tsx/dist/cli.mjs", "mcp/tg-notify/server.ts"]
+      "args": [
+        "./node_modules/tsx/dist/cli.mjs",
+        "mcp/tg-notify/server.ts"
+      ],
+      "env": { }
     }
   }
 }
