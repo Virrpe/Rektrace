@@ -41,3 +41,4 @@ NUL
 *.ilk
 *.exe
 logs/
+ops/
