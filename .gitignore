@@ -42,3 +42,5 @@ NUL
 *.exe
 logs/
 ops/
+.env
+logs/

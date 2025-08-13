@@ -1,28 +1,29 @@
 module.exports = {
   apps: [
     {
-      name: 'rektrace',
-      script: 'dist/rektrace-rugscan/rektrace-rugscan/src/index.js',
-      exec_mode: 'cluster',
-      instances: 2,
-      max_memory_restart: '500M',
-      autorestart: true,
-      watch: false,
-      node_args: '--enable-source-maps',
+      name: "mcp-http-probe",
+      cwd: ".",
+      script: "node",
+      args: ["--import=tsx","mcp/http-probe/server.ts"],
       env: {
-        NODE_ENV: 'production',
-        HEALTH_PORT: '8081',
-        // Other env is sourced from .env.prod via deploy script/pm2 --update-env
+        PORT: process.env.HTTP_PROBE_PORT || "5391"
       },
-      merge_logs: true,
-      time: true,
-      kill_timeout: 8000,
-      exp_backoff_restart_delay: 200,
-      out_file: 'logs/rektrace-out.log',
-      error_file: 'logs/rektrace-err.log',
-      log_date_format: 'YYYY-MM-DD HH:mm:ss.SSS',
+      autorestart: true,
+      max_restarts: 10,
+      watch: false
     },
-  ],
+    {
+      name: "mcp-tg-notify",
+      cwd: ".",
+      script: "node",
+      args: ["--import=tsx","mcp/tg-notify/server.ts"],
+      env: {
+        TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || "",
+        TELEGRAM_CHAT_ID:   process.env.TELEGRAM_CHAT_ID   || ""
+      },
+      autorestart: true,
+      max_restarts: 10,
+      watch: false
+    }
+  ]
 };
-
-
