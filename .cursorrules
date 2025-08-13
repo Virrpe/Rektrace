@@ -1,0 +1,183 @@
+# .cursorrules — RekTrace Autopilot (Cursor-wide rules)
+# Paste this file at the repo root as `.cursorrules`. Keep it short, deterministic, and actionable.
+
+──────────────────────────────────────────────────────────────────────────────
+IDENTITY
+──────────────────────────────────────────────────────────────────────────────
+Project: RekTrace — a high-performance, budget-friendly signal pipeline.
+Core: MCP tools + Telegram alerts + transparent observability.
+Style: mechanic interpretation; ship fast; zero AFK; evidence for every step.
+
+End Goal (V1)
+- Deterministic signal backbone that ingests → enriches → scores → alerts.
+- Full observability (Prometheus, Jaeger) + MCP tooling for on-demand queries.
+- Telegram notifications with trace IDs for auditability.
+
+Current Focus (Why)
+- Make the backbone 100% green (queues, webhook, worker, MCP tools).
+- Remove WSL/esbuild runtime risk by compiling TS → JS (`dist/`).
+- Use Hybrid MCP: local stdio servers now, Docker MCP Gateway ready for later.
+
+──────────────────────────────────────────────────────────────────────────────
+SYSTEM CONTEXT (Ground Truth)
+──────────────────────────────────────────────────────────────────────────────
+OS    : Windows + WSL2 (Ubuntu)
+Runtime: Node 20 + pnpm
+Infra : Docker Compose (dragonfly, postgres, jaeger, prometheus, grafana)
+Ports : grafana=3000, webhook=3100, prom=9090, jaeger=16686, otel=4317/4318
+DB    : Timescale-ready Postgres; idempotent schema in `db/schema.sql`
+Queues: BullMQ on Dragonfly (Redis @ 127.0.0.1:6379)
+MCP   : Hybrid — Gateway ws://localhost:12434 + local stdio MCP servers
+
+Key Files
+- src/queues.ts            (BullMQ queues: scan.incoming, alert.ready)
+- workers/tg-worker.ts     (Telegram sender; OTel; DRY-RUN w/o token)
+- servers/webhook.ts       (Fastify /health,/metrics,/test/alert on 3100)
+- src/tracing.ts           (OTel NodeSDK + Jaeger exporter)
+- db/schema.sql            (Timescale-ready schema)
+- .cursor/mcp.json         (Gateway + local stdio servers)
+
+──────────────────────────────────────────────────────────────────────────────
+OPERATING LOOP (MANDATORY FOR EVERY ACTION)
+──────────────────────────────────────────────────────────────────────────────
+PLAN    → small bullet list of 1–4 actions
+COMMAND → exact shell and/or atomic file patches
+RUN     → execute; for >3s use process/run; poll ≤5s
+OUTPUT  → paste ~120 lines tail; END WITH:
+          --- exit_code: <code> + LOG: <path-or-context>
+VERDICT → Pass/Fail + one-sentence reason
+NEXT    → the very next smallest step (continue without waiting)
+
+Error Policy
+- Propose ≤2 minimal fixes; pick one; apply; retry; summarize why it worked.
+- Never block waiting for human input unless hard-blocked by missing secrets.
+
+──────────────────────────────────────────────────────────────────────────────
+FILE PATCHES — ATOMIC FORMAT (USE EXACTLY)
+──────────────────────────────────────────────────────────────────────────────
+--- file: <relative/path>
+```<lang>
+<full final contents>
+──────────────────────────────────────────────────────────────────────────────
+MCP STRATEGY (HYBRID)
+──────────────────────────────────────────────────────────────────────────────
+
+Primary now: local stdio servers launched by Cursor via .cursor/mcp.json.
+
+Gateway: one WebSocket server at ws://localhost:12434 (Docker MCP Toolkit).
+
+Local stdio servers (expected tools):
+
+prom-metrics-local: ping, prom_query (PROM_URL=http://localhost:9090)
+
+postgres-ro-local : sql_query (read-only; DATABASE_URL set)
+
+tg-notify-local : tg_send / tg_photo (dryRun if no TELEGRAM_BOT_TOKEN)
+
+If a server shows “No tools”: Reload MCP; inspect logs; ensure “transport” key
+(not “type”) and correct command/args/env.
+
+──────────────────────────────────────────────────────────────────────────────
+BUILD & RUNTIME CONVENTION
+──────────────────────────────────────────────────────────────────────────────
+
+Compile TypeScript to dist/; run long-lived services from dist:
+worker : node dist/workers/tg-worker.js
+webhook: node dist/servers/webhook.js (default port 3100)
+
+BullMQ/ioredis: set Redis option { maxRetriesPerRequest: null }.
+
+OTel: Jaeger exporter to 4318; spans on startup and requests.
+
+──────────────────────────────────────────────────────────────────────────────
+JUST / COMMANDS (WINDOWS-SAFE WRAPPERS; RUN INSIDE WSL)
+──────────────────────────────────────────────────────────────────────────────
+Infra:
+just win_dev_obs # compose up -d (dragonfly, postgres, jaeger, prom, grafana)
+just win_db_schema_load # docker compose cp + psql apply db/schema.sql
+Build:
+just win_build_mcp # build MCP + tsc if configured
+Runtime (dist):
+node dist/workers/tg-worker.js > logs/tg-worker.out 2>&1 &
+node dist/servers/webhook.js > logs/webhook.out 2>&1 &
+Verify:
+curl -s http://localhost:9090/-/ready
+curl -s http://localhost:3100/health
+curl -s http://localhost:3100/metrics | head -n 40
+Alert test:
+curl -s -X POST http://localhost:3100/test/alert
+-H 'content-type: application/json'
+-d '{"chatId":"1234","text":"Hello from RekTrace!"}'
+
+──────────────────────────────────────────────────────────────────────────────
+ACCEPTANCE GUARDRAILS (V1 BACKBONE GREEN)
+──────────────────────────────────────────────────────────────────────────────
+
+Prometheus /-/ready = 200
+
+GET /health returns { ok: true } on 3100
+
+GET /metrics shows prom-client metrics
+
+POST /test/alert returns { "ok": true }; worker logs send attempt (DRY-RUN if no token)
+
+MCP tools respond:
+prom-metrics-local.ping → { ok: true }
+prom-metrics-local.prom_query { ql:"up" } → status: success
+postgres-ro-local.sql_query "select now();" → 1 row
+tg-notify-local.tg_send { text:"hi", dryRun:true } → ok
+
+Jaeger UI reachable at 16686; new spans appear after requests
+
+──────────────────────────────────────────────────────────────────────────────
+CONTAINER POSITIONING
+──────────────────────────────────────────────────────────────────────────────
+
+Do NOT bind-mount /mnt/c/... into MCP containers for production use.
+
+Use self-contained release images; no host volume mounts.
+
+If prom-metrics runs in same compose: PROM_URL=http://prometheus:9090
+(else use http://host.docker.internal:9090)
+
+When ready, expose customs via Docker MCP Gateway; keep local stdio as fallback
+until the gateway path is verified.
+
+──────────────────────────────────────────────────────────────────────────────
+SECRETS / ENV
+──────────────────────────────────────────────────────────────────────────────
+
+TELEGRAM_BOT_TOKEN (real sends; otherwise DRY-RUN)
+
+TG_CHAT_ID (optional)
+
+JAEGER_ENDPOINT (default http://127.0.0.1:4318/v1/traces)
+
+REDIS_URL (default redis://127.0.0.1:6379)
+
+DATABASE_URL (postgres-ro server)
+
+Never commit secrets; prefer local env or Docker Desktop secrets.
+
+──────────────────────────────────────────────────────────────────────────────
+WHEN IN DOUBT — MCP SELF-CHECK (AUTO)
+──────────────────────────────────────────────────────────────────────────────
+
+Use the local pinger if present: node tools/mcp_ping.mjs ALL
+
+Expect initialize → tools/list → (ping|sql_query|tg_send) success.
+
+If handshake stalls: check .cursor/mcp.json “transport”, “command/args”, and env.
+
+──────────────────────────────────────────────────────────────────────────────
+NEXT 2 (AFTER GREEN)
+──────────────────────────────────────────────────────────────────────────────
+
+Implement workers/enricher.ts: consume scan.incoming → viem features → insert scan_events → enqueue alert.ready (score≥threshold).
+
+Containerize customs (one by one) → enable via Docker MCP Gateway → retire local stdio when verified.
+
+makefile
+Copy
+Edit
+::contentReference[oaicite:0]{index=0}

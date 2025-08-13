@@ -1,0 +1,10 @@
+import { createMessageConnection, StreamMessageReader, StreamMessageWriter, RequestType } from "vscode-jsonrpc/node";
+import { execa } from "execa";
+const connection = createMessageConnection(new StreamMessageReader(process.stdin), new StreamMessageWriter(process.stdout));
+const Diff   = new RequestType<{ staged?: boolean }, { diff: string }, void>("git/diff");
+const Commit = new RequestType<{ message: string, addAll?: boolean }, { ok: boolean, out?: string, err?: string }, void>("git/commit");
+const Status = new RequestType<{}, { status: string }, void>("git/status");
+connection.onRequest(Diff,   async ({ staged }: { staged?: boolean }) => ({ diff: (await execa("git", staged?["diff","--staged","--","."]:["diff","--","."])).stdout.slice(-8000) }));
+connection.onRequest(Commit, async ({ message, addAll }: { message: string; addAll?: boolean }) => { try { if (addAll) await execa("git",["add","-A"]); const { stdout } = await execa("git",["commit","-m",message]); return { ok:true, out:stdout }; } catch(e:any){ return { ok:false, err:String(e?.stderr||e?.message||e)} }});
+connection.onRequest(Status, async () => ({ status: (await execa("git",["status","--porcelain=v1","-b"])).stdout }));
+connection.listen();

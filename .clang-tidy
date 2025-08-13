@@ -1,0 +1,8 @@
+Checks: >
+  bugprone-*,performance-*,modernize-*,readability-*,cppcoreguidelines-*,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-avoid-magic-numbers
+WarningsAsErrors: ''
+HeaderFilterRegex: 'cpp_demo/.*'
+AnalyzeTemporaryDtors: false
+FormatStyle: file

@@ -30,3 +30,14 @@ NUL
 
 .env.prod
 
+
+# C++ builds
+/build/
+/compile_commands.json
+*.o
+*.obj
+*.pch
+*.pdb
+*.ilk
+*.exe
+logs/

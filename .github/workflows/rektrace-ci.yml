@@ -1,0 +1,67 @@
+name: rektrace-ci
+
+on:
+  push:
+    branches: [ "**" ]
+  pull_request:
+    branches: [ "**" ]
+
+concurrency:
+  group: rektrace-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    env:
+      CMAKE_BUILD_PARALLEL_LEVEL: 4
+      NODE_ENV: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install system deps (C/C++/CMake/Ninja)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build ccache
+
+      - name: Install JS deps (if present)
+        run: |
+          if [ -f package-lock.json ]; then npm ci; elif [ -f package.json ]; then npm i; fi
+
+      - name: Run CI driver (progress + logs)
+        env:
+          NO_JS: "0"               # set "1" if repo is C++-only
+          PNPM_APPROVE_ALL: "1"    # auto-approve pnpm build scripts
+        run: |
+          chmod +x tools/progress_ci.sh
+          mkdir -p logs
+          ./tools/progress_ci.sh 2>&1 | tee -a logs/ci-driver.log
+        shell: bash
+
+      - name: Upload compile_commands.json (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile-commands-${{ github.run_id }}
+          path: build/compile_commands.json
+          if-no-files-found: ignore
+
+      - name: Upload logs (always)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rektrace-logs-${{ github.run_id }}
+          path: |
+            logs/**
+            build/**/Testing/Temporary/LastTest.log
+          if-no-files-found: warn
+          retention-days: 14
+
+

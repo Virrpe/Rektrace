@@ -64,26 +64,50 @@
     "rehearse:launch": "bash ops/rehearse_launch.sh",
     "drill:freeze": "bash ops/drill_freeze.sh",
     "rules:flip": "bash ops/flip_rules.sh",
-    "release:audit": "bash scripts/audit_pack.sh"
+    "release:audit": "bash scripts/audit_pack.sh",
+    "build:mcp": "tsc -b mcp/process-sentinel mcp/git-tools mcp/http-probe mcp/prom-metrics mcp/postgres-ro mcp/tg-notify",
+    "start:sentinel": "tsx mcp/process-sentinel/server.ts",
+    "start:git": "tsx mcp/git-tools/server.ts",
+    "start:http": "tsx mcp/http-probe/server.ts",
+    "cpp:configure": "cmake --preset default",
+    "cpp:build": "cmake --build --preset default",
+    "cpp:test": "ctest --test-dir build --output-on-failure",
+    "cpp:run": "node tools/cpp_bridge.mjs demo",
+    "cpp:bench": "node tools/cpp_bridge.mjs bench",
+    "cpp:score": "node tools/score_bridge.mjs --holders 800 --lp_locked yes --risk 0.10",
+    "cpp:score:low": "node tools/score_bridge.mjs --holders 120 --lp_locked no --risk 0.05"
   },
   "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "@polkadot/api": "^10.12.1",
+    "bullmq": "^5.56.10",
     "dotenv": "^16.4.5",
+    "execa": "^8.0.1",
+    "fastify": "^5.5.0",
     "grammy": "^1.25.3",
     "ioredis": "^5.4.1",
+    "pg": "^8.16.3",
+    "prom-client": "^15.1.3",
     "undici": "^6.19.8",
-    "@polkadot/api": "^10.12.1"
+    "viem": "^2.33.3",
+    "vscode-jsonrpc": "^8.2.0"
   },
   "devDependencies": {
-    "tsx": "^4.19.2",
-    "typescript": "^5.5.4",
-    "vitest": "^1.6.0",
     "@napi-rs/canvas": "^0.1.53",
-    "supertest": "^7.0.0",
+    "@opentelemetry/auto-instrumentations-node": "^0.62.0",
+    "@opentelemetry/exporter-jaeger": "^2.0.1",
+    "@opentelemetry/resources": "^2.0.1",
+    "@opentelemetry/sdk-node": "^0.203.0",
+    "@opentelemetry/semantic-conventions": "^1.36.0",
+    "@types/jest": "^29.5.12",
     "@types/supertest": "^2.0.16",
     "dotenv-cli": "^7.4.2",
     "jest": "^29.7.0",
+    "supertest": "^7.0.0",
     "ts-jest": "^29.2.4",
-    "@types/jest": "^29.5.12"
+    "tsx": "^4.19.2",
+    "typescript": "^5.5.4",
+    "vitest": "^1.6.0"
   },
   "packageManager": "pnpm@10.14.0+sha512.ad27a79641b49c3e481a16a805baa71817a04bbe06a38d17e60e2eaee83f6a146c6a688125f5792e48dd5ba30e7da52a5cda4c3992b9ccf333f9ce223af84748"
 }

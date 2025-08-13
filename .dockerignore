@@ -1,0 +1,7 @@
+**
+!package.json
+!pnpm-lock.yaml
+!mcp/prom-metrics/**
+!mcp/prom-metrics/Dockerfile
+
+

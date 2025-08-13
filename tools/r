@@ -1,0 +1,38 @@
+#!/usr/bin/env sh
+set -eu
+mkdir -p logs
+ts=$(date +"%Y%m%d-%H%M%S")
+safe=$(echo "$*" | tr ' /:' '_' | cut -c1-80)
+log="logs/${ts}-${safe}.log"
+status="${log%.log}.status.json"
+
+( while true; do printf '[%s] heartbeat\n' "$(date +%H:%M:%S)" >> "$log"; sleep 5; done ) & hb=$!
+
+tmp_ec_file="${status}.ec.tmp"
+rm -f "$tmp_ec_file" 2>/dev/null || true
+
+if command -v bash >/dev/null 2>&1; then
+  # avoid pipeline to preserve exit code
+  mkfifo "$status.pipe" 2>/dev/null || true
+  ( tee -a "$log" < "$status.pipe" & teepid=$!; \
+    bash -lc "$*" > "$status.pipe" 2>&1; ec=$?; echo $ec > "$tmp_ec_file"; \
+    exec 3>&-; wait $teepid; rm -f "$status.pipe" )
+else
+  mkfifo "$status.pipe" 2>/dev/null || true
+  ( tee -a "$log" < "$status.pipe" & teepid=$!; \
+    sh -lc "$*" > "$status.pipe" 2>&1; ec=$?; echo $ec > "$tmp_ec_file"; \
+    exec 3>&-; wait $teepid; rm -f "$status.pipe" )
+fi
+ec=$(cat "$tmp_ec_file" 2>/dev/null || echo 1)
+rm -f "$tmp_ec_file" 2>/dev/null || true
+
+kill "$hb" 2>/dev/null || true
+
+cat > "$status" <<JSON
+{"cmd": "$*", "log": "$log", "exit_code": $ec, "finished": $([ $ec -eq 0 ] && echo true || echo false)}
+JSON
+
+echo "--- exit_code: $ec"
+echo "LOG: $log"
+echo "STATUS: $status"
+exit $ec
