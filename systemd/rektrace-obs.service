@@ -1,0 +1,24 @@
+[Unit]
+Description=Rektrace Observability Stack
+After=docker.service rektrace-dev.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+WorkingDirectory=%h/Rektrace
+ExecStart=/usr/bin/docker-compose -f %h/Rektrace/docker-compose.yml up -d prometheus grafana jaeger
+ExecStop=/usr/bin/docker-compose -f %h/Rektrace/docker-compose.yml stop prometheus grafana jaeger
+TimeoutStartSec=300
+TimeoutStopSec=60
+
+# Environment
+Environment=DOCKER_BUILDKIT=1
+Environment=COMPOSE_DOCKER_CLI_BUILD=1
+
+# Restart policy
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=default.target
