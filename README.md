@@ -1,4 +1,7 @@
 # RekTrace Cursor MCP Pack (Node/TS)
+<!-- cheevo-badge:start -->
+[![Vibe](https://img.shields.io/endpoint?url=https%3A%2F%2Fmotors-dana-eval-builder.trycloudflare.com%2Fapi%2Fbadge%2FVirrpe%2FRektrace.json)](https://motors-dana-eval-builder.trycloudflare.com/board)
+<!-- cheevo-badge:end -->
 
 
 
